@@ -139,10 +139,7 @@ var monitorDownload = function() {
 
     var isFileNotFound = true;
 
-    /* TODO: Grab the current username automatically
-        For now just change `thanosth` with `$ whoami`
-    */
-    var downloadsPath = '/Users/thanosth/Music/iTunes/iTunes Media/Mobile Applications';
+    var downloadsPath = '~/Music/iTunes/iTunes Media/Mobile Applications';
 
     /* Stepping in Objective-C territory. There might be a saner way to do this by manipulating
         Finder via `System Events` the way we do with iTunes, but will probably be very very slow.
