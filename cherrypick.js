@@ -19,7 +19,7 @@ function run(args) {
 
     } else {
 
-        openiTunesWithURL(args[0]);
+        openiTunesWithURL(fixUrl(args[0]));
         getiTunesAppWindow();
         downloadApplication();
         monitorDownload();
@@ -37,6 +37,17 @@ var printHelp = function() {
     console.log('\n\tUsage:');
     console.log('\t$ cherrypick.js <App URL on iTunes>');
     console.log('\t  NOTE: If your url contains the ? character, make sure you enclose your URL in "".');
+
+};
+
+/*
+ * Convert url from https to itms
+ *
+ * @param {String} iTunesURL
+ */
+var fixUrl = function(url) {
+
+    return url.replace('https:', 'itms:');
 
 };
 
@@ -84,10 +95,17 @@ var downloadApplication = function() {
                 This path is hardcoded for now. Basically we dump `iTunesAppWindow.entireContents()` somewhere,
                 find/replace "," with <new lines> and we try to pin point which control we're interested in by eye.
             */
-            var buttonDescrStrComponents = iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).description().split(",");
+            var controlDescrStrComponents = iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).description().split(",");
 
-            appName = buttonDescrStrComponents[2].slice(1);
-            console.log('[+] Found application: ' + appName+'. Downloading...');
+            var fullAppName = controlDescrStrComponents[2].slice(1);
+            console.log('[+] Found application: "' + fullAppName +'". Downloading...');
+
+            /*
+                Sometimes apps on iTunes have some nasty names (i.e Pocket: Save Articles and Videos to View Later)
+                and the downloaded .ipa file is always "<AppName> <version>.ipa". This is a nasty hack to properly
+                match the iTunes name with what we're trying to find when polling the downloads folder
+            */
+            appName = fullAppName.split(" ")[0].slice(0, -1);
 
             iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).click();
 
@@ -128,9 +146,6 @@ var monitorDownload = function() {
 
     var isFileNotFound = true;
 
-    /* TODO: Grab the current username automatically
-        For now just change `thanosth` with `$ whoami`
-    */
     var downloadsPath = '/Users/thanosth/Music/iTunes/iTunes Media/Mobile Applications';
 
     /* Stepping in Objective-C territory. There might be a saner way to do this by manipulating
