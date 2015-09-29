@@ -19,7 +19,7 @@ function run(args) {
 
     } else {
 
-        openiTunesWithURL(args[0]);
+        openiTunesWithURL(fixUrl(args[0]));
         getiTunesAppWindow();
         downloadApplication();
         monitorDownload();
@@ -37,6 +37,17 @@ var printHelp = function() {
     console.log('\n\tUsage:');
     console.log('\t$ cherrypick.js <App URL on iTunes>');
     console.log('\t  NOTE: If your url contains the ? character, make sure you enclose your URL in "".');
+
+};
+
+/*
+ * Convert url from https to itms
+ *
+ * @param {String} iTunesURL
+ */
+var fixUrl = function(url) {
+
+    return url.replace('https:', 'itms:');
 
 };
 
