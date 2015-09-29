@@ -95,10 +95,17 @@ var downloadApplication = function() {
                 This path is hardcoded for now. Basically we dump `iTunesAppWindow.entireContents()` somewhere,
                 find/replace "," with <new lines> and we try to pin point which control we're interested in by eye.
             */
-            var buttonDescrStrComponents = iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).description().split(",");
+            var controlDescrStrComponents = iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).description().split(",");
 
-            appName = buttonDescrStrComponents[2].slice(1);
-            console.log('[+] Found application: ' + appName+'. Downloading...');
+            var fullAppName = controlDescrStrComponents[2].slice(1);
+            console.log('[+] Found application: "' + fullAppName +'". Downloading...');
+
+            /*
+                Sometimes apps on iTunes have some nasty names (i.e Pocket: Save Articles and Videos to View Later)
+                and the downloaded .ipa file is always "<AppName> <version>.ipa". This is a nasty hack to properly
+                match the iTunes name with what we're trying to find when polling the downloads folder
+            */
+            appName = fullAppName.split(" ")[0].slice(0, -1);
 
             iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).click();
 
@@ -139,7 +146,7 @@ var monitorDownload = function() {
 
     var isFileNotFound = true;
 
-    var downloadsPath = '~/Music/iTunes/iTunes Media/Mobile Applications';
+    var downloadsPath = '/Users/thanosth/Music/iTunes/iTunes Media/Mobile Applications';
 
     /* Stepping in Objective-C territory. There might be a saner way to do this by manipulating
         Finder via `System Events` the way we do with iTunes, but will probably be very very slow.
