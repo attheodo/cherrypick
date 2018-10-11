@@ -21,6 +21,7 @@ function run(args) {
 
         openiTunesWithURL(fixUrl(args[0]));
         getiTunesAppWindow();
+        hideiTunesAppWindow();
         downloadApplication();
         monitorDownload();
         quit();
@@ -76,6 +77,13 @@ var getiTunesAppWindow = function() {
 
     iTunesAppWindow = system.processes.byName('iTunes').windows[0];
 };
+
+var hideiTunesAppWindow = function() {
+    iTunesApp = Application('iTunes');
+    iTunesApp.activate();
+    var se = Application('System Events')
+    se.keystroke('h', { using: 'command down' }) // Press Cmd-H
+}
 
 /*
  * Juicy part. This method keeps trying to find the "Download" button on the app's
