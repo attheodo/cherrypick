@@ -21,6 +21,7 @@ function run(args) {
 
         openiTunesWithURL(fixUrl(args[0]));
         getiTunesAppWindow();
+        hideiTunesAppWindow();
         downloadApplication();
         monitorDownload();
         quit();
@@ -73,9 +74,16 @@ var openiTunesWithURL = function(iTunesURL) {
 var getiTunesAppWindow = function() {
 
     var system = Application('System Events');
-    iTunesAppWindow = system.applicationProcesses.byName('iTunes').windows.byName('iTunes');
 
+    iTunesAppWindow = system.processes.byName('iTunes').windows[0];
 };
+
+var hideiTunesAppWindow = function() {
+    iTunesApp = Application('iTunes');
+    iTunesApp.activate();
+    var se = Application('System Events')
+    se.keystroke('h', { using: 'command down' }) // Press Cmd-H
+}
 
 /*
  * Juicy part. This method keeps trying to find the "Download" button on the app's
@@ -85,29 +93,42 @@ var getiTunesAppWindow = function() {
 var downloadApplication = function() {
 
     var retries = 0;
-    var maxRetries = 5;
+    var maxRetries = 8;
 
     while(true) {
 
         try {
 
-            /*
-                This path is hardcoded for now. Basically we dump `iTunesAppWindow.entireContents()` somewhere,
-                find/replace "," with <new lines> and we try to pin point which control we're interested in by eye.
-            */
-            var controlDescrStrComponents = iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).description().split(",");
 
-            var fullAppName = controlDescrStrComponents[2].slice(1);
+            // Get an array of all UI elements in iTunes window.
+			uiElems = Application("System Events").applicationProcesses['iTunes'].windows[0].entireContents()
+
+			// Find all buttons whose description contains 'Get'.
+			btns = uiElems.filter(function(element) {
+                try {
+                    return element.role() == 'AXButton' && (element.description().match(/\bGet\b/) || element.description().match(/\bDownload\b/))
+                } catch (e) {}
+			})
+
+			// Split the description
+			let btnDesc = btns[0].description().split(",");
+
+			// Get the full app name, and remove the " " in front
+			var fullAppName = btnDesc[1].slice(1);
+
+			//var fullAppName = btnDesc[2].slice(1);
             console.log('[+] Found application: "' + fullAppName +'". Downloading...');
 
-            /*
-                Sometimes apps on iTunes have some nasty names (i.e Pocket: Save Articles and Videos to View Later)
-                and the downloaded .ipa file is always "<AppName> <version>.ipa". This is a nasty hack to properly
-                match the iTunes name with what we're trying to find when polling the downloads folder
-            */
-            appName = fullAppName.split(" ")[0].slice(0, -1);
+            // Get the app name (reduced for file monitoring) for later
+            //appName = fullAppName.split(" ")[0].slice(0, -1);
+            if (fullAppName.indexOf(":") > -1 ) {
+                appName = fullAppName.split(":")[0].trim();
+            } else {
+                appName = fullAppName.split(" ")[0].trim();
+            }
 
-            iTunesAppWindow.splitterGroups.at(0).scrollAreas.at(0).uiElements.at(0).groups.at(2).buttons.at(0).click();
+			// Click on the 1st button found.
+			btns[0].click()
 
             break;
 
@@ -119,7 +140,7 @@ var downloadApplication = function() {
                 Essentially, we keep retrying by incrementing our delay until we reach the desireable state where the
                 "download" control can be paresed and the download can be initiated.
             */
-            var delayThreshold = retries + 1;
+            var delayThreshold = (retries+1) * 2;
 
             console.log('[!] State not ready yet, retrying in (' + delayThreshold +'s)...');
             delay(delayThreshold);
@@ -146,43 +167,23 @@ var monitorDownload = function() {
 
     var isFileNotFound = true;
 
-    var downloadsPath = '/Users/thanosth/Music/iTunes/iTunes Media/Mobile Applications';
+    var downloadsPath = '~/Music/iTunes/iTunes Media/Mobile Applications';
 
-    /* Stepping in Objective-C territory. There might be a saner way to do this by manipulating
-        Finder via `System Events` the way we do with iTunes, but will probably be very very slow.
+    console.log('Waiting for ' + `${appName}` + ' to finish downloading...');
 
-        For now, we just use the bridge to NSFileManager methods.
-    */
-    var fileMgr = $.NSFileManager.defaultManager;
+    var listFiles = Application('System Events').folders.byName(downloadsPath).diskItems.name()
 
     while(isFileNotFound) {
 
-        var files = [];
+        var updatedListFiles = Application('System Events').folders.byName(downloadsPath).diskItems.name()
 
-        var lstFiles = ObjC.unwrap(
-            // Need to bring this from ObjC runtime to Javascript runtime.
-            // Parallel universes! Fringe science!
-            fileMgr.contentsOfDirectoryAtPathError(downloadsPath, null)
-        );
-
-        if (lstFiles) {
-
-            for(var i=0; i < lstFiles.length; i++) {
-
-                var filename = ObjC.unwrap(lstFiles[i]);
-
-                if (filename.indexOf(appName) > -1) {
-
-                    isFileNotFound = false;
-                    console.log('\n\t ✔ Download complete. ' + downloadsPath + '/' + filename);
-
-                }
-
-            }
+        if (updatedListFiles.length > listFiles.length) {
+            isFileNotFound = false;
+            console.log('\n\t ✔ Download ' + `${appName}` + ' complete. ');
         }
 
         // Poll every one second
-        delay(1);
+        delay(2);
     }
 
 };
